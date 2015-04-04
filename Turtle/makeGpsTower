@@ -1,0 +1,130 @@
+-- coordinate of the turtle/center of the gps tower
+local tArg = {...} -- x,y,z,face
+print(tArg[1],tArg[2],tArg[3],tArg[4])
+local coord = {}
+if #tArg == 0 then
+	coord.x, coord.y, coord.z = gps.locate(5) -- 5 second of timeout
+	if not coord.x then
+		print("Failed to locate gps location.")
+		print("Try again using manual insertion of x, y, z")
+	else
+		dirFacing = t.isFacing()
+	end
+else	-- manual association of  value x, y, z
+	coord.x = tonumber(tArg[1]) 
+	coord.y = tonumber(tArg[2])
+	coord.z = tonumber(tArg[3])
+	dirFacing = tArg[4]
+end
+
+coord.y = coord.y + 1 -- turtle always will move up one before directing toward its assigned spot
+
+
+-- Satellite parameter
+towerHeight = 250	-- the tower should be built at y = 250+- radius
+radius = 3 		-- radius from the central point of the tower 
+toggleI = 1
+toggleJ = 1
+newCoord = {}
+
+-- Initial setup: place disk drive, floopy disk and ender chest
+flagName = {'DiskDrive', 'Disk', 'Enderchest', 'Turtle'}
+flag = {}
+for i = 1,4 do
+	flag[flagName[i]] = false
+end
+flagCounter = 0
+i = 1
+twoFullLoop = 0	-- avoid infinte loop
+while flagCounter < 4 and twoFullLoop < 32 do
+	turtle.select( i ) -- select slot to inspect
+	itemInfo = turtle.getItemDetail()
+	if itemInfo ~= nil then
+		if itemInfo.name == 'ComputerCraft:CC-Peripheral' and not flag.DiskDrive then
+			turtle.place()
+			flag.DiskDrive = true
+			flagCounter = flagCounter + 1
+		elseif itemInfo.name == 'ComputerCraft:disk' and flag.DiskDrive and not flag.Disk then
+			turtle.drop()
+			flag.Disk = true
+			flagCounter = flagCounter + 1
+		elseif itemInfo.name == 'EnderStorage:enderChest' and not flag.Enderchest then
+			turtle.digDown()
+			turtle.placeDown()
+			flag.Enderchest = true
+			flagCounter = flagCounter + 1
+		elseif itemInfo.name == 'ComputerCraft:CC-TurtleAdvanced' and not flag.Turtle then
+			turtleSlot = i	
+			flag.Turtle = true
+			flagCounter = flagCounter + 1
+		end
+	end
+	if i < 16 then
+		i = i + 1
+	else
+		i = 1
+	end
+	twoFullLoop = twoFullLoop + 1 
+end
+
+-- Main loop: new coordinate are calculate for each satellite position, save to disk, deploy turtle, launch turtle
+for i = 1,2 do
+	for j = 1,2 do
+		newCoord.y = towerHeight + toggleI * toggleJ * radius
+		newCoord.x = coord.x + toggleI * radius
+		newCoord.z = coord.z + toggleJ * radius
+		print('Placing satellite'..tostring(i)..tostring(j)..' at:')
+		print('x = '..tostring(newCoord.x))
+		print('y = '..tostring(newCoord.y))
+		print('z = '..tostring(newCoord.z))
+		toggleJ = - toggleJ
+		-- file to write for each turtle
+			-- script to save as startup to keep the satellite running at each startup
+			so = io.open('/satellite/satelliteOperation'..tostring(i)..tostring(j),'w')
+			so:write('shell.run("gps host '..newCoord.x..' '..newCoord.y..' '..newCoord.z..'")')
+			so:close()
+			-- script to run once for positioning the satellite
+			sp = io.open("/satellite/satellitePosition"..tostring(i)..tostring(j), "w")	
+			sp:write('os.loadAPI("/disk/t") \n')
+			sp:write('shell.run("rename /disk/satelliteOperation startup") \n')
+			sp:write('coord = vector.new('..coord.x..' , '..coord.y..' , '..coord.z..') \n')
+			sp:write('newCoord = vector.new('..newCoord.x..' , '..newCoord.y..' , '..newCoord.z..') \n')
+			sp:write('dirToGo,_,fuelNeeded = t.AtoB(coord,newCoord) \n')	
+			sp:write('turtle.suckDown(fuelNeeded+1) \n')	-- the chest with only fuel is under the turtle
+			sp:write('shell.run("refuel all") \n')
+			sp:write('turtle.up() \n')
+			sp:write('t.goTo( "'..dirFacing..'", dirToGo ) \n')
+			sp:write('shell.run("startup")')
+			sp:close()
+		-- save file to disk
+		if disk.isPresent('front') then
+			fs.delete('disk/t')
+			fs.delete('/disk/satelliteOperation')
+			fs.delete('/disk/startup')
+			fs.copy('t', '/disk/t')
+			fs.copy('/satellite/satelliteOperation'..tostring(i)..tostring(j), '/disk/satelliteOperation')
+			fs.copy('/satellite/satellitePosition'..tostring(i)..tostring(j), '/disk/startup')
+			-- place turtle
+			if turtle.getFuelLevel() < 2 then
+				turtle.suckDown(2)
+				shell.run("refuel all")
+			end
+			turtle.back()
+			turtle.select(turtleSlot)
+			turtle.place()
+			peripheral.call('front','turnOn')
+			while turtle.detect() do
+				sleep(1)
+			end
+			turtle.forward()
+			sleep(1)
+		else
+			return
+		end
+	end
+	toggleI = - toggleI
+end
+-- closing 
+turtle.suck()
+turtle.dig()
+turtle.digDown()

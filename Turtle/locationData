@@ -1,0 +1,10 @@
+station = {} 
+station.firstSeed = vector.new(342 , 65 , 499)
+station.lastSeed = vector.new(335 , 65 , 499)
+station.dirt = vector.new(334 , 65 , 499)
+station.endstone = vector.new(333 , 65 , 499)
+station.refuel = vector.new(333 , 65 , 499)
+station.netherrack = vector.new(332 , 65 , 499)
+station.boneMeal = vector.new(331 , 65 , 499)
+station.dropOff = vector.new(331 , 65 , 499)
+station.water = vector.new(331 , 65 , 499)

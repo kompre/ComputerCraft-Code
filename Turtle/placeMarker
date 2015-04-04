@@ -1,0 +1,87 @@
+-- placeMarker: place marker in square (3 marker) or in line (2 Marker)
+
+-- 
+function placeMarker()
+	if turtle.detectDown() == false then 
+		turtle.select(1) -- assign to slot 1 with block for placing
+		turtle.placeDown()
+	end
+	turtle.up()
+	turtle.select(2) -- assign to slot 2 with markers
+	turtle.placeDown()
+end
+
+function clearWay()
+	if turtle.detect() then
+		turtle.dig()
+	end
+end
+
+function moveForward(l)
+	for i = 1,l do
+		clearWay()
+		turtle.forward()
+	end
+end
+
+
+-- argument input and first check
+local tArg = {...}
+if #tArg ~= 2 then
+	print( "Usage: placeMarker <shape> <length> " )
+	print( "Shape available: \n s: square \n l: line" )
+	return
+end
+
+-- Square shape:
+if tArg[1] ==  "s" then
+	length = tArg[2]
+	moves = length*4+1+2+2; -- number of movement necessary for the operation; finish point is the starting point
+	if moves > turtle.getFuelLevel() then
+		print("Need refueling")
+		return
+	end
+	-- main body of the function
+	placeMarker()
+	moveForward(length)
+	turtle.down()
+	placeMarker()
+	turtle.turnRight()
+	turtle.turnRight()
+	moveForward(length)
+	turtle.turnRight()
+	moveForward(length)
+	turtle.down()
+	placeMarker()
+	turtle.turnRight()
+	turtle.turnRight()
+	moveForward(length)
+	turtle.turnLeft()
+end
+
+-- Line Shape:
+if tArg[1] ==  "l" then
+	length = tArg[2]
+	moves = length*2+1+2; -- number of movement necessary for the operation; finish point is the starting point
+	if moves > turtle.getFuelLevel() then
+		print("Need refueling")
+		return
+	end
+		-- main body of the function
+	placeMarker()
+	moveForward(length)
+	turtle.down()
+	placeMarker()
+	turtle.turnRight()
+	turtle.turnRight()
+	moveForward(length)
+	turtle.turnRight()
+	turtle.turnRight()
+end
+
+
+
+	
+	
+	
+

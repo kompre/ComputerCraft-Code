@@ -1,0 +1,36 @@
+stationName = { 'refuel', 'boneMeal', 'dropOff', 'firstSeed', 'lastSeed', 'dirt', 'netherrack', 'water', 'endstone' }
+f = io.open( 'locationData','w')	-- file to write
+f:write('station = {} \n')
+while #stationName > 0 do
+	-- move the turtle
+	print( 'Move turtle back or forward? (f/b) \nPress enter to skip' )
+	dir = io.read()
+	if dir == 'f' or dir == 'b' then
+		print( 'How many times?' )
+		step = io.read()
+		if dir == 'f' then
+			for i = 1,step do
+				turtle.forward()
+			end
+		elseif dir == 'b' then
+			for i = 1,step do
+				turtle.back()
+			end
+		end
+	end
+	print('Are you on location? (y/n)')
+	-- selection process
+	answer = io.read()
+	if answer == 'y' then		
+		x,y,z = gps.locate() -- create vector of the current position
+		-- Selection of the current station
+		print( 'Select the station to save the coordinate as:' )
+		for k, name in pairs( stationName ) do
+			print( tostring( k )..' : '..name )
+		end
+		selection = tonumber( io.read() )	
+		f:write( 'station.'..stationName[selection]..' = vector.new('..x..' , '..y..' , '..z..')\n')
+		table.remove(stationName,selection)		-- remove from selection choice the current selection
+	end
+end
+f:close()

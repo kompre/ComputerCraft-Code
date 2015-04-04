@@ -1,0 +1,183 @@
+modemSide = 'left'
+receiverID = 46
+--
+os.loadAPI('t')
+rednet.open( modemSide )
+seedType = { 0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15 } -- all seed type (there are no 7 or 13)
+seedName = { 'Squid Plant', 'Fire Flower', 'Creeper Plant', 'Slime Plant', 'Rain Plant', 'Ender Plant', 'Lightning Plant', 'Burst Plant', 'Potion Plant', 'Repulsion Plant', 'Helium Plant', 'Chopper Plant', 'Propulsion Plant', 'Flying Flower' }
+
+soil = { dirt = { 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 15} , water = {0} , endstone = {5} , netherrackUp = {11}, netherrackDown = {1} }
+seed = {}
+side = { even = "bottom", odd = 'top' }	-- side division of the seed
+shell.run( 'locationData' )	-- load all the positions saved (vectors)
+-- syntax example:
+	-- station.firstSeed 
+	-- station.lastSeed
+	-- station.boneMeal
+	-- station.dirt
+	-- station.netherrack
+	-- station.refuel
+	-- station.dropOff
+	-- station.water
+station.netherrackDown = station.netherrack
+station.netherrackUp = station.netherrack
+actualDir = t.isFacing()
+	
+-- function ----------------------------------------------------------------------
+function sign( num )		
+	-- function sign: return the sign of a number as +1/-1
+	if num < 0 then
+		r = -1
+	elseif num >= 0 then
+		r =  1
+	end
+return r
+end
+
+-- boneMeal
+function getBoneMeal( _originalDir, _station )
+	-- function getBoneMeal: if boneMeal goes to 0, turtle goes to boneMeal's station to restock
+	_boneMeal = t.invCheckFor( t.invCheck() , 'minecraft:dye' )
+	if _boneMeal.count == 0 then
+		rednet.send( receiverID, 'fetching Bone Meal', 'currentTask' )
+		_originalPosition = vector.new(gps.locate())	-- get the starting point coordinates
+		_actualDir = t.goTo( _originalDir, t.AtoB( vector.new( gps.locate() ), _station ))	-- go to the bonemeal station
+		turtle.suckUp()
+		_boneMeal = t.invCheckFor( t.invCheck() , 'minecraft:dye' )
+		_actualDir = t.goTo( _actualDir, t.AtoB( vector.new( gps.locate() ), _originalPosition))	-- go back to starting position
+		t.faceTo( _actualDir, _originalDir ) --	face the turtle toward its original facing
+	end
+	return _boneMeal
+end
+
+----------------------------------------------------------------------------------
+
+-- create position for each seed
+delta = station.firstSeed - station.lastSeed	-- the value > 0 is the axis the barrel are placed
+-- BE CAREFUL! vector mess things up; need to have simple table
+for k,v in pairs( delta ) do
+	st = 0	-- seedType index
+	baseValue = station.firstSeed[k]
+	posValue = 'tempX, tempY, tempZ = '..station.firstSeed:tostring()
+	t.dostring( posValue )
+	for i = 0, math.abs( v ) do
+		-- even assignment
+		--print('st = '..tostring(st)..'\n'..'k = '..tostring(k)..'\n'..'v = '..tostring(v)..'\n'..'i = '..tostring(i))
+		seed[st] = { side = side.even , position = { x = tempX, y = tempY, z = tempZ  } }	--not a vector
+		seed[st].position[k] = baseValue - sign( v ) * i -- increase (both sign equal) or decrease (sign disequal) in the k direction
+		-- odd assignment
+		seed[st+1] = { side = side.odd , position = { x = tempX, y = tempY, z = tempZ  } }	--not a vector
+		seed[st+1].position[k] = baseValue - sign( v ) * i -- increase (both sign equal) or decrease (sign disequal) in the k direction
+		st = st + 2 -- the seedType index is increased by two
+	end
+end
+-- assign soil to seed and name
+for i = 1,#seedType do
+	for soilType, seedListAllowed in pairs(soil) do
+		for _,seedAllowed in pairs( seedListAllowed ) do
+			if seedType[i] == seedAllowed then
+				seed[seedType[i]].soil = soilType
+			end
+		end
+	end
+	seed[seedType[i]].name = seedName[ i ]
+end
+
+-- Main Body
+while true do
+	-- refuel
+	if turtle.getFuelLevel() < 80 then
+		rednet.send( receiverID, 'Refueling', 'currentTask' )
+		actualDir = t.goTo( actualDir, t.AtoB( vector.new( gps.locate() ), station.refuel ))
+		turtle.suckUp()
+		shell.run('refuel all')
+		
+	end
+	
+	-- seed
+	for i = 1,#seedType do
+		-- dropOff
+		rednet.send( receiverID, 'Dropping items', 'currentTask' )
+		actualDir = t.goTo( actualDir, t.AtoB( vector.new( gps.locate() ), station.dropOff ) )
+		t.dropAll('top')
+		-- go to the barrel and take 1 seed to start farming
+		rednet.send( receiverID, 'fetching '..seed[seedType[i]].name..' seed', 'currentTask' )	-- send seed name
+		actualDir = t.goTo( actualDir, t.AtoB( vector.new( gps.locate() ), t.vectorize( seed[seedType[i]].position )))
+		if not rs.getInput( seed[seedType[i]].side ) then	-- check if the barrel is full
+		
+			if seed[seedType[i]].side == 'top' then
+				turtle.suckUp(1)
+				currentSeed = t.invCheckFor( t.invCheck(), 'plasticPlant' )
+			elseif seed[seedType[i]].side == 'bottom' then
+				turtle.suckDown(1)
+				currentSeed = t.invCheckFor( t.invCheck(), 'plasticPlant' )
+			end
+			
+			while currentSeed.count < 8 do
+				isMature = {}
+				-- go to proper block
+				rednet.send( receiverID, 'farming', 'currentTask' ) -- send seed name and soil
+				actualDir = t.goTo( actualDir, t.AtoB( vector.new( gps.locate() ), station[ seed[seedType[i]].soil ] ) )
+				-- farm seed
+				if seed[seedType[i]].soil == 'netherrackUp' then
+					turtle.select( currentSeed.slot )
+					turtle.placeUp()
+					sleep(1)
+					isPresent,matureLevel = turtle.inspectUp()
+					if isPresent then
+						isMature = matureLevel
+					else
+						isMature.metadata = 13 -- break the while-loop and replant
+					end
+					while isMature.metadata < 13 do
+						boneMeal = getBoneMeal(actualDir,station.boneMeal)
+						turtle.select( boneMeal.slot )
+						turtle.placeUp()
+						isPresent,matureLevel = turtle.inspectUp()
+						if isPresent then
+							isMature = matureLevel
+						else
+							isMature = 13 -- break the while-loop and replant
+						end
+					end
+					turtle.select( currentSeed.slot )
+					turtle.digUp()
+				else
+					turtle.select( currentSeed.slot )
+					if seed[seedType[i]].soil == 'water' then
+						turtle.dropDown(1)
+					else
+						turtle.placeDown()
+					end
+					sleep(1)
+					isPresent,matureLevel = turtle.inspectDown()
+					if isPresent then
+						isMature = matureLevel
+					else
+						isMature.metadata = 13 -- break the while-loop and replant
+					end
+					while isMature.metadata < 13 do
+						boneMeal = getBoneMeal(actualDir,station.boneMeal)
+						turtle.select( boneMeal.slot )
+						turtle.placeDown()
+						isPresent,matureLevel = turtle.inspectDown()
+						if isPresent then
+							isMature = matureLevel
+						else
+							isMature.metadata = 13 -- break the while-loop and replant
+						end
+					end
+					turtle.select( currentSeed.slot )
+					turtle.digDown()				
+				end
+				currentSeed = t.invCheckFor( t.invCheck() , 'plasticPlant' )
+				stat = { seed = seed[seedType[i]], currentSeed = currentSeed, boneMeal = boneMeal }
+				rednet.send( receiverID, stat , 'stats' ) -- send seed name and soil
+				-- seed check
+				if currentSeed.count == 0 then
+					break
+				end
+			end
+		end
+	end
+end
