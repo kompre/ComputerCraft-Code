@@ -1,5 +1,20 @@
-modemSide = 'left'
-receiverID = 46
+-- farmSeed
+--
+-- SHORT DESCRIPTION:
+-- 	This script uses a farming/wireless/GPS turtle to farm PneumaticCraft Seed. 
+-- 	Other mods required: Jabba Barrels and Applied Energistics.
+-- 	Developed for Minecraft 1.7.10.
+--
+-- LONG DESCRIPTION:
+--
+-- 	Jabba Barrels stores each type of seeds (14) and are hooked-up to a Applied Energistics Network by storage bus; To work properly they need to be placed in line, divided in 2 rows, one to be placed on the bottom and one on the top with a space inbetween for the turtle to move. They need to have each a redstone upgrade and redstone facade either on the top of the barrel or the bottom of the barrel (facade must face the turtle). Since the turtle knows where each type of seed is, based on the its damage value, seeds must be placed in order inside the barrels. (NOTE: PneumaticCraft Seeds doesn't have 7 and 13 damage value, so you need to leave an empty place for them)
+-- 	Dirt, End Stone, Water and Netherrack (On the ceiling and on the bottom) are required to farm seed.
+-- 	At least two interfaces are required to hold bone meal for growing seeds and coal for refueling the turtle. One of them can act as drop off station.
+-- 	Turtle knows its location due the gps API and therefore needs a GPS satellite to work. It also relies on the custom "t" API.
+
+modemSide = 'left'		-- side of the wireless modem
+receiverID = 46			-- receiverID of the computer that displays the informations sent
+seedAmountGoal = 16		-- number of seeds the turtle needs in its inventory to complete a cycle
 --
 os.loadAPI('t')
 rednet.open( modemSide )
@@ -113,7 +128,7 @@ while true do
 				currentSeed = t.invCheckFor( t.invCheck(), 'plasticPlant' )
 			end
 			
-			while currentSeed.count < 8 do
+			while currentSeed.count < seedAmountGoal do
 				isMature = {}
 				-- go to proper block
 				rednet.send( receiverID, 'farming', 'currentTask' ) -- send seed name and soil
