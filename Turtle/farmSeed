@@ -11,6 +11,7 @@
 -- 	Dirt, End Stone, Water and Netherrack (On the ceiling and on the bottom) are required to farm seed.
 -- 	At least two interfaces are required to hold bone meal for growing seeds and coal for refueling the turtle. One of them can act as drop off station.
 -- 	Turtle knows its location due the gps API and therefore needs a GPS satellite to work. It also relies on the custom "t" API.
+-- 	The script depends on "locationData" to be present. This file is written by "setup" script and provide the (x, y, z) coordinates of the various stations the turtle needs to operate. Setup must run only once
 
 modemSide = 'left'		-- side of the wireless modem
 receiverID = 46			-- receiverID of the computer that displays the informations sent
